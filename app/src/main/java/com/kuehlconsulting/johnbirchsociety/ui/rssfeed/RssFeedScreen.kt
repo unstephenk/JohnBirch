@@ -26,7 +26,8 @@ import com.kuehlconsulting.johnbirchsociety.model.RssItem
 @OptIn(ExperimentalFoundationApi::class) // Needed for combinedClickable
 @Composable
 fun RssFeedScreen(
-    viewModel: RssFeedViewModel = viewModel()
+    viewModel: RssFeedViewModel = viewModel(),
+    onNavigateToPlayer: (String) -> Unit // Callback to navigate to the player screen
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current // Get the context for showing Toast messages
@@ -42,9 +43,21 @@ fun RssFeedScreen(
                 modifier = Modifier.padding(horizontal = 8.dp) // Adds horizontal padding to the list
             ) {
                 items(rssItems) { item ->
-                    RssItemCard(item = item, onLongPress = {
-                        Toast.makeText(context, "Long pressed: ${item.title}", Toast.LENGTH_SHORT).show() //
-                    })
+                    RssItemCard(
+                        item = item,
+                        onLongPress = {
+                            Toast.makeText(context, "Long pressed: ${item.title}", Toast.LENGTH_SHORT).show()
+                        },
+                        onDownloadClick = {
+                            viewModel.downloadMp3(context, it)
+                        },
+                        onPlayClick = {
+                            // Navigate to the Player Screen with the local file path
+                            it.localFilePath?.let { path ->
+                                onNavigateToPlayer(path)
+                            } ?: Toast.makeText(context, "File not downloaded yet!", Toast.LENGTH_SHORT).show()
+                        }
+                    )
                 }
             }
         }
@@ -57,7 +70,11 @@ fun RssFeedScreen(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun RssItemCard(item: RssItem, onLongPress: () -> Unit) {
+fun RssItemCard(
+    item: RssItem,
+    onLongPress: () -> Unit,
+    onDownloadClick: (),
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth() // Make the card fill the width
@@ -78,11 +95,6 @@ fun RssItemCard(item: RssItem, onLongPress: () -> Unit) {
                 text = item.description ?: "No Description",
                 style = MaterialTheme.typography.bodyMedium, // Use a typography style
                 modifier = Modifier.padding(bottom = 4.dp)
-            )
-            Text(
-                text = item.link ?: "No Link",
-                style = MaterialTheme.typography.bodySmall, // Use a typography style
-                color = MaterialTheme.colorScheme.primary // Use a color from your theme
             )
         }
     }

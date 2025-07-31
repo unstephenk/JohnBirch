@@ -4,6 +4,14 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" /> <!-- For background playback -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" /> <!-- For older Android versions (<API 29) -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" /> <!-- For older Android versions (<API 33) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" /> <!-- For showing media notifications on Android 13+ -->
+    <uses-permission android:name="android.permission.BLUETOOTH" /> <!-- Needed for Bluetooth setup -->
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" /> <!-- Needed for Bluetooth setup -->
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" /> <!-- For connecting to Bluetooth devices (API 31+) -->
+
 
 
     <application

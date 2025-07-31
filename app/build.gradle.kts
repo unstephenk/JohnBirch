@@ -61,4 +61,16 @@ dependencies {
     implementation(libs.ktor.client.android)
     implementation(libs.ktor.client.content.negotiation) // For JSON parsing, though you'll be dealing with XML
     implementation(libs.androidx.lifecycle.viewmodel.compose) // Use the latest stable version
+    implementation(libs.androidx.media3.exoplayer) // Media3 ExoPlayer
+    implementation(libs.androidx.media3.session)   // For media session and background playback
+    implementation(libs.androidx.media3.ui)       // Optional: for default UI controls
+    implementation(libs.androidx.media3.ui.compose) // Optional: Compose UI integration
+
+    // For file download
+    implementation(libs.okhttp) // Or your preferred HTTP client for downloading
+
+    // For ViewModel helper methods (if not already there)
+    implementation(libs.androidx.lifecycle.viewmodel.ktx)
+    implementation(libs.androidx.lifecycle.runtime.ktx.v285)
+    implementation(libs.androidx.lifecycle.viewmodel.compose.v285)
 }

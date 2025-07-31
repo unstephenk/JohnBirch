@@ -1,11 +1,14 @@
 package com.kuehlconsulting.johnbirchsociety.ui.rssfeed
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.kuehlconsulting.johnbirchsociety.data.Mp3Downloader
 import com.kuehlconsulting.johnbirchsociety.data.RssFeedService
 import com.kuehlconsulting.johnbirchsociety.model.RssItem
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.io.StringReader
 import org.xmlpull.v1.XmlPullParser
@@ -54,8 +57,12 @@ class RssFeedViewModel(
                         "item" -> currentItem = RssItem()
                         "title" -> currentItem?.title = parser.nextText()
                         "description" -> currentItem?.description = parser.nextText()
-                        "link" -> currentItem?.link = parser.nextText()
-                        // Add other relevant fields if needed
+                        "enclosure" -> {
+                            val enclosureUrl = parser.getAttributeValue(null, "url")
+                            if (!enclosureUrl.isNullOrEmpty()) {
+                                currentItem?.enclosureUrl = enclosureUrl
+                            }
+                        }
                     }
                 }
                 XmlPullParser.END_TAG -> {
@@ -69,11 +76,69 @@ class RssFeedViewModel(
         }
         return rssItems
     }
+
+    fun downloadMp3(context: Context, item: RssItem) {
+        // Prevent re-downloading if already downloaded or currently downloading
+        if (item.isDownloaded || _uiState.value !is RssFeedUiState.Success) return
+
+        val downloader = Mp3Downloader(context)
+        viewModelScope.launch {
+            // Update UI state to show download in progress
+            _uiState.update { currentState ->
+                if (currentState is RssFeedUiState.Success) {
+                    currentState.copy(
+                        rssItems = currentState.rssItems.map { rssItem ->
+                            if (rssItem == item) rssItem.copy(downloadProgress = 0.01f) // Start progress slightly above 0
+                            else rssItem
+                        }
+                    )
+                } else currentState
+            }
+
+            downloader.downloadMp3(
+                rssItem = item,
+                onProgress = { progress ->
+                    _uiState.update { currentState ->
+                        if (currentState is RssFeedUiState.Success) {
+                            currentState.copy(
+                                rssItems = currentState.rssItems.map { rssItem ->
+                                    if (rssItem == item) rssItem.copy(downloadProgress = progress)
+                                    else rssItem
+                                }
+                            )
+                        } else currentState
+                    }
+                },
+                onCompletion = { filePath ->
+                    _uiState.update { currentState ->
+                        if (currentState is RssFeedUiState.Success) {
+                            currentState.copy(
+                                rssItems = currentState.rssItems.map { rssItem ->
+                                    if (rssItem == item) {
+                                        if (filePath != null) {
+                                            rssItem.copy(
+                                                isDownloaded = true,
+                                                localFilePath = filePath,
+                                                downloadProgress = 1f
+                                            )
+                                        } else {
+                                            // Handle download failure
+                                            rssItem.copy(downloadProgress = 0f) // Reset progress
+                                        }
+                                    } else rssItem
+                                }
+                            )
+                        } else currentState
+                    }
+                }
+            )
+        }
+    }
 }
 
 // Define the UI State for your screen
 sealed class RssFeedUiState {
-    object Loading : RssFeedUiState()
+    data object Loading : RssFeedUiState()
     data class Success(val rssItems: List<RssItem>) : RssFeedUiState()
     data class Error(val message: String) : RssFeedUiState()
 }
