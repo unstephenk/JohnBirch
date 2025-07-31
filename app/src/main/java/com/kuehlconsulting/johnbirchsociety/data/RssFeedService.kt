@@ -15,8 +15,6 @@ class RssFeedService {
         } catch (e: Exception) {
             e.printStackTrace()
             null
-        } finally {
-            client.close() // Close the client after use
         }
     }
 }

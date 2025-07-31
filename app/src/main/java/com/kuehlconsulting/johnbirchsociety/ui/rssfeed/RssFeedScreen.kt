@@ -73,14 +73,15 @@ fun RssFeedScreen(
 fun RssItemCard(
     item: RssItem,
     onLongPress: () -> Unit,
-    onDownloadClick: (),
+    onDownloadClick: (RssItem) -> Unit,
+    onPlayClick: (RssItem) -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth() // Make the card fill the width
             .combinedClickable( // Use combinedClickable for long press
                 onLongClick = onLongPress,
-                onClick = { /* Handle regular clicks here if needed */ }
+                onClick = { onPlayClick(item) }
             ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = MaterialTheme.shapes.medium // Use a consistent shape from your theme
@@ -95,6 +96,15 @@ fun RssItemCard(
                 text = item.description ?: "No Description",
                 style = MaterialTheme.typography.bodyMedium, // Use a typography style
                 modifier = Modifier.padding(bottom = 4.dp)
+            )
+            Text(
+                text = "Download",
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(top = 8.dp)
+                    .combinedClickable(
+                        onClick = { onDownloadClick(item) },
+                        onLongClick = {}
+                    )
             )
         }
     }

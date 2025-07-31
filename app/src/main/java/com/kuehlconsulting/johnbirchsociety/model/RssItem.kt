@@ -8,5 +8,5 @@ data class RssItem(
     var enclosureUrl: String? = null, // To store the MP3 URL
     var localFilePath: String? = null, // To store the path of the downloaded file
     var isDownloaded: Boolean = false,
-    var downloadProgress: Float = 0f // 0.0 to 1.0
+    var downloadProgress: Float = 0f,
 )

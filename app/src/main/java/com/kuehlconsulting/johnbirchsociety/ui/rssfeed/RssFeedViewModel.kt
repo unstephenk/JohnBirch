@@ -1,6 +1,7 @@
 package com.kuehlconsulting.johnbirchsociety.ui.rssfeed
 
 import android.content.Context
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kuehlconsulting.johnbirchsociety.data.Mp3Downloader
@@ -38,6 +39,7 @@ class RssFeedViewModel(
                 }
             } catch (e: Exception) {
                 _uiState.value = RssFeedUiState.Error("Error: ${e.localizedMessage}")
+                Log.e("RssFeedViewModel", "Failed to fetch RSS", e)
             }
         }
     }

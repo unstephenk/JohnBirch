@@ -46,7 +46,9 @@ class MainActivity : ComponentActivity() {
                             .padding(innerPadding), // Apply the padding from Scaffold
                         color = MaterialTheme.colorScheme.background
                     ) {
-                        RssFeedScreen() // This is your RSS feed content
+                        RssFeedScreen(
+                            onNavigateToPlayer = { filePath -> println("Navigate to player with file: $filePath")}
+                        ) // This is your RSS feed content
                     }
                 }
             }
