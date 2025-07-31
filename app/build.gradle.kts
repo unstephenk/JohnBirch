@@ -60,4 +60,5 @@ dependencies {
     implementation(libs.ktor.client.core) // Replace x with the latest version
     implementation(libs.ktor.client.android)
     implementation(libs.ktor.client.content.negotiation) // For JSON parsing, though you'll be dealing with XML
+    implementation(libs.androidx.lifecycle.viewmodel.compose) // Use the latest stable version
 }
