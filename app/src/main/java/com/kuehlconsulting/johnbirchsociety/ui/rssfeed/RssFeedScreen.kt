@@ -1,19 +1,35 @@
 package com.kuehlconsulting.johnbirchsociety.ui.rssfeed
 
+import android.widget.Toast
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel // For ViewModel in Composable
+import com.kuehlconsulting.johnbirchsociety.model.RssItem
 
+@OptIn(ExperimentalFoundationApi::class) // Needed for combinedClickable
 @Composable
 fun RssFeedScreen(
-    viewModel: RssFeedViewModel = viewModel() // Get the ViewModel instance
+    viewModel: RssFeedViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current // Get the context for showing Toast messages
 
     when (uiState) {
         is RssFeedUiState.Loading -> {
@@ -21,18 +37,53 @@ fun RssFeedScreen(
         }
         is RssFeedUiState.Success -> {
             val rssItems = (uiState as RssFeedUiState.Success).rssItems
-            LazyColumn {
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(8.dp), // Adds space between items
+                modifier = Modifier.padding(horizontal = 8.dp) // Adds horizontal padding to the list
+            ) {
                 items(rssItems) { item ->
-                    Text(text = item.title ?: "No Title")
-                    Text(text = item.description ?: "No Description")
-                    Text(text = item.link ?: "No Link")
-                    // Add more UI elements to display other fields if needed
+                    RssItemCard(item = item, onLongPress = {
+                        Toast.makeText(context, "Long pressed: ${item.title}", Toast.LENGTH_SHORT).show() //
+                    })
                 }
             }
         }
         is RssFeedUiState.Error -> {
             val message = (uiState as RssFeedUiState.Error).message
-            Text(text = "Error: $message") // Display an error message
+            Text(text = "Error: $message", modifier = Modifier.padding(8.dp)) // Added padding for consistency
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun RssItemCard(item: RssItem, onLongPress: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth() // Make the card fill the width
+            .combinedClickable( // Use combinedClickable for long press
+                onLongClick = onLongPress,
+                onClick = { /* Handle regular clicks here if needed */ }
+            ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = MaterialTheme.shapes.medium // Use a consistent shape from your theme
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) { // Add padding inside the card
+            Text(
+                text = item.title ?: "No Title",
+                style = MaterialTheme.typography.titleMedium, // Use a typography style
+                modifier = Modifier.padding(bottom = 4.dp)
+            )
+            Text(
+                text = item.description ?: "No Description",
+                style = MaterialTheme.typography.bodyMedium, // Use a typography style
+                modifier = Modifier.padding(bottom = 4.dp)
+            )
+            Text(
+                text = item.link ?: "No Link",
+                style = MaterialTheme.typography.bodySmall, // Use a typography style
+                color = MaterialTheme.colorScheme.primary // Use a color from your theme
+            )
         }
     }
 }
