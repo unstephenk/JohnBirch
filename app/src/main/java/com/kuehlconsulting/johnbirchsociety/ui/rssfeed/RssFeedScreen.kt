@@ -53,12 +53,18 @@ fun RssFeedScreen(
                             Toast.makeText(context, "Long pressed: ${item.title}", Toast.LENGTH_SHORT).show()
                         },
                         onDownloadClick = {
-                            viewModel.downloadMp3(context, it)
+                            clicked -> val url = clicked.enclosureUrl
+                                Toast.makeText(context, url ?: "No enclosure URL for this item",
+                                    Toast.LENGTH_SHORT
+                            ).show()
+
+                            if (!url.isNullOrBlank()) {
+                                viewModel.downloadMp3(context, clicked)
+                            }
                         },
                         onPlayClick = {
                             // Navigate to the Player Screen with the local file path
-                            it.localFilePath?.let { path ->
-                                onNavigateToPlayer(path)
+                            it.localFilePath?.let { path -> onNavigateToPlayer(path)
                             } ?: Toast.makeText(context, "File not downloaded yet!", Toast.LENGTH_SHORT).show()
                         }
                     )
