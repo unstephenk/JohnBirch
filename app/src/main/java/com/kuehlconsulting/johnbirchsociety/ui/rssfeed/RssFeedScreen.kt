@@ -100,8 +100,7 @@ fun RssItemCard(
             Text(
                 text = "Download",
                 color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(top = 8.dp)
-                    .combinedClickable(
+                modifier = Modifier.padding(top = 8.dp).combinedClickable(
                         onClick = { onDownloadClick(item) },
                         onLongClick = {}
                     )

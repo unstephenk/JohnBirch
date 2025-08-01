@@ -1,7 +1,5 @@
 package com.kuehlconsulting.johnbirchsociety.model
 
-import android.net.Uri
-
 data class RssItem(
     var title: String? = null,
     var description: String? = null,
