@@ -7,4 +7,5 @@ data class RssItem(
     var localFilePath: String? = null, // To store the path of the downloaded file
     var isDownloaded: Boolean = false,
     var downloadProgress: Float = 0f,
+    var declaredLength: Long? = null,
 )

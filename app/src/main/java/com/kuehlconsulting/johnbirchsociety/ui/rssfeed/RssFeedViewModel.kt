@@ -61,9 +61,11 @@ class RssFeedViewModel(
                         "description" -> currentItem?.description = parser.nextText()
                         "enclosure" -> {
                             val enclosureUrl = parser.getAttributeValue(null, "url")
+                            val lengthAttr = parser.getAttributeValue(null, "length")
                             if (!enclosureUrl.isNullOrEmpty()) {
                                 currentItem?.enclosureUrl = enclosureUrl
                             }
+                            currentItem?.declaredLength = lengthAttr?.toLongOrNull()
                         }
                     }
                 }
@@ -87,50 +89,34 @@ class RssFeedViewModel(
         viewModelScope.launch {
             // Update UI state to show download in progress
             _uiState.update { currentState ->
-                if (currentState is RssFeedUiState.Success) {
-                    currentState.copy(
-                        rssItems = currentState.rssItems.map { rssItem ->
-                            if (rssItem == item) rssItem.copy(downloadProgress = 0.01f) // Start progress slightly above 0
-                            else rssItem
-                        }
-                    )
-                } else currentState
+                if (currentState is RssFeedUiState.Success) currentState.copy(
+                    rssItems = currentState.rssItems.map { it ->
+                        if (it.enclosureUrl == item.enclosureUrl) it.copy(downloadProgress = 0.01f) else it
+                    }
+                ) else currentState
             }
 
             downloader.downloadMp3(
                 rssItem = item,
                 onProgress = { progress ->
-                    _uiState.update { currentState ->
-                        if (currentState is RssFeedUiState.Success) {
-                            currentState.copy(
-                                rssItems = currentState.rssItems.map { rssItem ->
-                                    if (rssItem == item) rssItem.copy(downloadProgress = progress)
-                                    else rssItem
-                                }
-                            )
-                        } else currentState
+                    _uiState.update { s ->
+                        if (s is RssFeedUiState.Success) s.copy(
+                            rssItems = s.rssItems.map { it ->
+                                if (it.enclosureUrl == item.enclosureUrl) it.copy(downloadProgress = progress) else it
+                            }
+                        ) else s
                     }
                 },
                 onCompletion = { filePath ->
-                    _uiState.update { currentState ->
-                        if (currentState is RssFeedUiState.Success) {
-                            currentState.copy(
-                                rssItems = currentState.rssItems.map { rssItem ->
-                                    if (rssItem == item) {
-                                        if (filePath != null) {
-                                            rssItem.copy(
-                                                isDownloaded = true,
-                                                localFilePath = filePath,
-                                                downloadProgress = 1f
-                                            )
-                                        } else {
-                                            // Handle download failure
-                                            rssItem.copy(downloadProgress = 0f) // Reset progress
-                                        }
-                                    } else rssItem
-                                }
-                            )
-                        } else currentState
+                    _uiState.update { s ->
+                        if (s is RssFeedUiState.Success) s.copy(
+                            rssItems = s.rssItems.map { it ->
+                                if (it.enclosureUrl == item.enclosureUrl) {
+                                    if (filePath != null) it.copy(isDownloaded = true, localFilePath = filePath, downloadProgress = 1f)
+                                    else it.copy(downloadProgress = 0f)
+                                } else it
+                            }
+                        ) else s
                     }
                 }
             )

@@ -46,7 +46,7 @@ fun RssFeedScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp), // Adds space between items
                 modifier = Modifier.padding(horizontal = 8.dp) // Adds horizontal padding to the list
             ) {
-                items(rssItems) { item ->
+                items(rssItems, key = { it.enclosureUrl ?: it.title ?: it.hashCode() }) { item ->
                     RssItemCard(
                         item = item,
                         onLongPress = {

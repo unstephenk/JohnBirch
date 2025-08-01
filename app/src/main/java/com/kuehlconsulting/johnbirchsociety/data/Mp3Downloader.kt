@@ -48,7 +48,10 @@ class Mp3Downloader(private val context: Context) {
 
             val body = response.body
 
-            val reportedLen = body.contentLength() // may be -1 but your feed usually has length
+            val reportedLen = body.contentLength()
+            val expectedTotal = if (reportedLen > 0) reportedLen else (rssItem.declaredLength ?: -1L)
+                val hasKnownLength = expectedTotal > 0
+
             Log.d("Mp3Downloader", "Start download: len=$reportedLen url=$url")
 
             val fileName = url.substringAfterLast('/').ifBlank { "audio_${System.currentTimeMillis()}.mp3" }
@@ -91,16 +94,17 @@ class Mp3Downloader(private val context: Context) {
                         val buffer = ByteArray(8192)
                         var read: Int
                         var downloaded = 0L
+
                         while (input.read(buffer).also { read = it } != -1) {
-                            dst!!.write(buffer, 0, read)
+                            out.write(buffer, 0, read)
                             downloaded += read
-                            if (reportedLen > 0) {
-                                onProgress(downloaded.toFloat() / reportedLen.toFloat())
+                            if (hasKnownLength) {
+                                onProgress(downloaded.toFloat() / expectedTotal.toFloat())
+                            } else {
+                                onProgress(-1f)
                             }
                         }
-                        dst!!.flush()
-                        // For file streams, ensure it’s flushed to disk
-                        if (dst is FileOutputStream) dst.fd.sync()
+                        onProgress(1f)
                     }
                 }
 
