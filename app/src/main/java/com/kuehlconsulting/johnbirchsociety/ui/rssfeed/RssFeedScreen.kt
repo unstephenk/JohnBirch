@@ -1,5 +1,6 @@
 package com.kuehlconsulting.johnbirchsociety.ui.rssfeed
 
+import android.R
 import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -9,10 +10,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -97,14 +101,36 @@ fun RssItemCard(
                 style = MaterialTheme.typography.bodyMedium, // Use a typography style
                 modifier = Modifier.padding(bottom = 4.dp)
             )
-            Text(
-                text = "Download",
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(top = 8.dp).combinedClickable(
-                        onClick = { onDownloadClick(item) },
-                        onLongClick = {}
+            when {
+                item.isDownloaded -> {
+                    Button(onClick = { onPlayClick(item) }) {
+                        Text("Play")
+                    }
+                }
+
+                item.downloadProgress > 0f && item.downloadProgress < 1f -> {
+                    LinearProgressIndicator(
+                        progress = { item.downloadProgress },
+                        modifier = Modifier.fillMaxWidth().padding(top=4.dp),
+                        color = ProgressIndicatorDefaults.linearColor,
+                        trackColor = ProgressIndicatorDefaults.linearTrackColor,
+                        strokeCap = ProgressIndicatorDefaults.LinearStrokeCap,
                     )
-            )
+
+                    Text(
+                        text = "${(item.downloadProgress * 100).toInt()}%",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 6.dp)
+                    )
+                }
+                else -> {
+                    Button(
+                        onClick = { onDownloadClick(item) },
+                        enabled = item.enclosureUrl != null
+                    ) { Text("Download") }
+                }
+
+            }
         }
     }
 }
