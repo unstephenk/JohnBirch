@@ -163,60 +163,39 @@ fun RssItemCard(
                 modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)
             )
 
-            when {
-                item.isDownloaded -> {
-                    Button(onClick = { onPlayClick(item) }) { Text("Play") }
-                    if (!item.localFilePath.isNullOrBlank()) {
-                        Text(
-                            text = "Saved",
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(top = 6.dp)
-                        )
-                    }
-                }
+            when { item.isDownloaded -> {
+                Button(onClick = { onPlayClick(item) }) { Text("Play") }
+            }
 
+                // show indeterminate when you emit -1f
                 item.downloadProgress < 0f -> {
-                    // Indeterminate when total size unknown
                     LinearProgressIndicator(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = 4.dp)
                     )
-                    Text(
-                        text = "Downloading…",
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(top = 6.dp)
-                    )
+                    Text("Downloading…", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 6.dp))
                 }
 
-                item.downloadProgress in 0f..0.999f -> {
+                // show determinate ONLY when > 0 and < 1
+                item.downloadProgress > 0f && item.downloadProgress < 1f -> {
                     LinearProgressIndicator(
                         progress = item.downloadProgress.coerceIn(0f, 1f),
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = 4.dp)
                     )
-                    Text(
-                        text = "${(item.downloadProgress * 100).toInt()}%",
+                    Text("${(item.downloadProgress * 100).toInt()}%",
                         style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(top = 6.dp)
-                    )
+                        modifier = Modifier.padding(top = 6.dp))
                 }
 
+                // otherwise show Download button
                 else -> {
                     Button(
                         onClick = { onDownloadClick(item) },
                         enabled = item.enclosureUrl != null
                     ) { Text("Download") }
-
-                    if (item.enclosureUrl == null) {
-                        Text(
-                            text = "No audio URL",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.padding(top = 6.dp)
-                        )
-                    }
                 }
             }
         }
