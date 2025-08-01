@@ -1,132 +1,172 @@
 package com.kuehlconsulting.johnbirchsociety.ui.rssfeed
 
-import android.content.Context
+import android.app.Application
 import android.util.Log
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.kuehlconsulting.johnbirchsociety.data.DownloadRepository
 import com.kuehlconsulting.johnbirchsociety.data.Mp3Downloader
 import com.kuehlconsulting.johnbirchsociety.data.RssFeedService
 import com.kuehlconsulting.johnbirchsociety.model.RssItem
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import java.io.StringReader
 import org.xmlpull.v1.XmlPullParser
 import org.xmlpull.v1.XmlPullParserFactory
+import java.io.StringReader
 
-class RssFeedViewModel(
-    private val rssFeedService: RssFeedService = RssFeedService()
-) : ViewModel() {
+/**
+ * UI state composed from RSS + Room(downloads)
+ */
+data class FeedItemUi(
+    val item: RssItem,
+    val isDownloaded: Boolean,
+    val localRef: String?,
+    val progress: Float
+)
 
-    private val _uiState = MutableStateFlow<RssFeedUiState>(RssFeedUiState.Loading)
-    val uiState: StateFlow<RssFeedUiState> = _uiState
+sealed class RssFeedUiState {
+    data object Loading : RssFeedUiState()
+    data class Error(val message: String) : RssFeedUiState()
+    data object Ready : RssFeedUiState() // content comes from feedUi flow
+}
+
+class RssFeedViewModel(app: Application) : AndroidViewModel(app) {
+
+    private val appContext = app.applicationContext
+    private val repo = DownloadRepository(appContext)
+    private val rssFeedService = RssFeedService()
+
+    // Raw RSS items kept in memory
+    private val _rssItems = MutableStateFlow<List<RssItem>>(emptyList())
+
+    // High-level screen status
+    private val _status = MutableStateFlow<RssFeedUiState>(RssFeedUiState.Loading)
+    val status: StateFlow<RssFeedUiState> = _status.asStateFlow()
+
+    // Combined UI list = RSS items + downloads table
+    val feedUi: StateFlow<List<FeedItemUi>> =
+        combine(_rssItems, repo.observeAll()) { rss, downloads ->
+            val byUrl = downloads.associateBy { it.enclosureUrl }
+            rss.map { r ->
+                val d = r.enclosureUrl?.let { byUrl[it] }
+                FeedItemUi(
+                    item = r,
+                    isDownloaded = d?.isDownloaded == true,
+                    localRef = d?.localRef,
+                    progress = when {
+                        d?.isDownloaded == true -> 1f
+                        else -> r.downloadProgress
+                    }
+                )
+            }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     init {
-        fetchRssFeed()
+        refresh()
     }
 
-    fun fetchRssFeed() {
+    fun refresh() {
         viewModelScope.launch {
-            _uiState.value = RssFeedUiState.Loading
+            _status.value = RssFeedUiState.Loading
             try {
                 val xml = rssFeedService.getRssFeedXml("https://rss.infowars.com/Alex.rss")
-                if (xml != null) {
-                    val rssItems = parseRssFeed(xml)
-                    _uiState.value = RssFeedUiState.Success(rssItems)
-                } else {
-                    _uiState.value = RssFeedUiState.Error("Failed to fetch RSS feed.")
+                if (xml.isNullOrBlank()) {
+                    _status.value = RssFeedUiState.Error("Empty RSS response")
+                    return@launch
                 }
+                val items = parseRssFeed(xml)
+                _rssItems.value = items
+                _status.value = RssFeedUiState.Ready
             } catch (e: Exception) {
-                _uiState.value = RssFeedUiState.Error("Error: ${e.localizedMessage}")
                 Log.e("RssFeedViewModel", "Failed to fetch RSS", e)
+                _status.value = RssFeedUiState.Error("Error: ${e.localizedMessage ?: "unknown"}")
             }
         }
     }
 
-    private fun parseRssFeed(xml: String): List<RssItem> {
-        val parser = XmlPullParserFactory.newInstance().newPullParser()
-        parser.setInput(StringReader(xml))
+    /**
+     * Start a download and reflect progress in-memory; on completion write to DB.
+     * Items are matched by enclosureUrl (stable key), never by full object equality.
+     */
+    fun downloadMp3(item: RssItem) {
+        val url = item.enclosureUrl ?: return
+        val downloader = Mp3Downloader(appContext)
 
-        var eventType = parser.eventType
-        val rssItems = mutableListOf<RssItem>()
-        var currentItem: RssItem? = null
-
-        while (eventType != XmlPullParser.END_DOCUMENT) {
-            when (eventType) {
-                XmlPullParser.START_TAG -> {
-                    when (parser.name) {
-                        "item" -> currentItem = RssItem()
-                        "title" -> currentItem?.title = parser.nextText()
-                        "description" -> currentItem?.description = parser.nextText()
-                        "enclosure" -> {
-                            val enclosureUrl = parser.getAttributeValue(null, "url")
-                            val lengthAttr = parser.getAttributeValue(null, "length")
-                            if (!enclosureUrl.isNullOrEmpty()) {
-                                currentItem?.enclosureUrl = enclosureUrl
-                            }
-                            currentItem?.declaredLength = lengthAttr?.toLongOrNull()
-                        }
-                    }
-                }
-                XmlPullParser.END_TAG -> {
-                    if (parser.name == "item" && currentItem != null) {
-                        rssItems.add(currentItem)
-                        currentItem = null
-                    }
-                }
-            }
-            eventType = parser.next()
+        // Nudge UI so a progress bar shows immediately.
+        _rssItems.update { list ->
+            list.map { if (it.enclosureUrl == url) it.copy(downloadProgress = 0.01f) else it }
         }
-        return rssItems
-    }
 
-    fun downloadMp3(context: Context, item: RssItem) {
-        // Prevent re-downloading if already downloaded or currently downloading
-        if (item.isDownloaded || _uiState.value !is RssFeedUiState.Success) return
-
-        val downloader = Mp3Downloader(context)
         viewModelScope.launch {
-            // Update UI state to show download in progress
-            _uiState.update { currentState ->
-                if (currentState is RssFeedUiState.Success) currentState.copy(
-                    rssItems = currentState.rssItems.map { it ->
-                        if (it.enclosureUrl == item.enclosureUrl) it.copy(downloadProgress = 0.01f) else it
-                    }
-                ) else currentState
-            }
-
             downloader.downloadMp3(
                 rssItem = item,
                 onProgress = { progress ->
-                    _uiState.update { s ->
-                        if (s is RssFeedUiState.Success) s.copy(
-                            rssItems = s.rssItems.map { it ->
-                                if (it.enclosureUrl == item.enclosureUrl) it.copy(downloadProgress = progress) else it
-                            }
-                        ) else s
+                    _rssItems.update { list ->
+                        list.map {
+                            if (it.enclosureUrl == url) it.copy(downloadProgress = progress)
+                            else it
+                        }
                     }
                 },
-                onCompletion = { filePath ->
-                    _uiState.update { s ->
-                        if (s is RssFeedUiState.Success) s.copy(
-                            rssItems = s.rssItems.map { it ->
-                                if (it.enclosureUrl == item.enclosureUrl) {
-                                    if (filePath != null) it.copy(isDownloaded = true, localFilePath = filePath, downloadProgress = 1f)
-                                    else it.copy(downloadProgress = 0f)
-                                } else it
+                onCompletion = { localRef ->
+                    if (localRef != null) {
+                        // Persist to DB; UI will reflect via feedUi combine()
+                        viewModelScope.launch {
+                            runCatching {
+                                repo.upsertCompleted(
+                                    enclosureUrl = url,
+                                    localRef = localRef,
+                                    bytesExpected = item.declaredLength
+                                )
+                            }.onFailure { e ->
+                                Log.e("RssFeedViewModel", "DB upsert failed", e)
                             }
-                        ) else s
+                        }
+                    } else {
+                        // Reset progress on failure
+                        _rssItems.update { list ->
+                            list.map {
+                                if (it.enclosureUrl == url) it.copy(downloadProgress = 0f)
+                                else it
+                            }
+                        }
                     }
                 }
             )
         }
     }
-}
 
-// Define the UI State for your screen
-sealed class RssFeedUiState {
-    data object Loading : RssFeedUiState()
-    data class Success(val rssItems: List<RssItem>) : RssFeedUiState()
-    data class Error(val message: String) : RssFeedUiState()
+    // ---- RSS parsing ----
+
+    private fun parseRssFeed(xml: String): List<RssItem> {
+        val parser = XmlPullParserFactory.newInstance().newPullParser()
+        parser.setInput(StringReader(xml))
+
+        val items = mutableListOf<RssItem>()
+        var event = parser.eventType
+        var current: RssItem? = null
+
+        while (event != XmlPullParser.END_DOCUMENT) {
+            when (event) {
+                XmlPullParser.START_TAG -> when (parser.name) {
+                    "item" -> current = RssItem()
+                    "title" -> current?.title = parser.nextText()
+                    "description" -> current?.description = parser.nextText()
+                    "enclosure" -> {
+                        val enclosureUrl = parser.getAttributeValue(null, "url")
+                        val lengthAttr = parser.getAttributeValue(null, "length")
+                        if (!enclosureUrl.isNullOrEmpty()) current?.enclosureUrl = enclosureUrl
+                        current?.declaredLength = lengthAttr?.toLongOrNull()
+                    }
+                    // Optional: pubDate/guid if you want them later
+                }
+                XmlPullParser.END_TAG -> if (parser.name == "item" && current != null) {
+                    items += current
+                    current = null
+                }
+            }
+            event = parser.next()
+        }
+        return items
+    }
 }
