@@ -32,7 +32,7 @@ class Mp3Downloader(private val context: Context) {
             val request = Request.Builder().url(rssItem.enclosureUrl!!).build()
             val response = client.newCall(request).execute()
 
-            if (!response.isSuccessful) throw IOException("Failed to download file: $response")
+            if (!response.isSuccessful) throw IOException("HTTP ${response.code} ${response.message}")
 
             val body = response.body
             val totalBytes = body.contentLength()
