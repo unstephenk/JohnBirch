@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<network_security_config>
+<network-security-config>
     <domain-config cleartextTrafficPermitted="true">
+        <!-- Use the exact host from the URL you see in the toast (no scheme, no path) -->
         <domain includeSubdomains="true">infowars.com</domain>
     </domain-config>
-</network_security_config>
+</network-security-config>
