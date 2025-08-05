@@ -100,21 +100,26 @@ class AudioPlayerService : MediaSessionService() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val notification = buildNotification()
-        startForeground(NOTIFICATION_ID, notification)
+        super.onStartCommand(intent, flags, startId)
+        val uriString = intent?.getStringExtra(KEY_URI)
+        val enclosureUrl = intent?.getStringExtra(KEY_ENCLOSURE_URL)
 
-        if (intent?.action == ACTION_PLAY) {
-            val uriString = intent.getStringExtra(KEY_URI)
-            val enclosureUrl = intent.getStringExtra(KEY_ENCLOSURE_URL)
-
-            if (!uriString.isNullOrBlank() && !enclosureUrl.isNullOrBlank()) {
-                val uri = Uri.parse(uriString)
-                playMedia(enclosureUrl, uri)
+        if (uriString != null) {
+            val mediaItem = MediaItem.fromUri(Uri.parse(uriString))
+            player?.apply {
+                setMediaItem(mediaItem)
+                prepare()
+                play() // ✅ without this, audio won't start
             }
+
+            // Build notification AFTER player is set up
+            val notification = buildNotification()
+            startForeground(NOTIFICATION_ID, notification)
         }
 
-        return super.onStartCommand(intent, flags, startId)
+        return START_STICKY
     }
+
 
 
 
