@@ -23,6 +23,8 @@ import kotlinx.coroutines.launch
 import androidx.core.net.toUri
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaStyleNotificationHelper
+import com.google.common.util.concurrent.Futures
+import com.google.common.util.concurrent.ListenableFuture
 import com.kuehlconsulting.johnbirchsociety.R
 
 class AudioPlayerService : MediaSessionService() {
@@ -53,7 +55,38 @@ class AudioPlayerService : MediaSessionService() {
 
         mediaSession = MediaSession.Builder(this, player!!)
             .setSessionActivity(sessionActivity)
+            .setCallback(object : MediaSession.Callback {
+                fun onPlay(session: MediaSession, controller: MediaSession.ControllerInfo) {
+                    player?.play()
+                }
+
+                fun onPause(session: MediaSession, controller: MediaSession.ControllerInfo) {
+                    player?.pause()
+                }
+
+                fun onStop(session: MediaSession, controller: MediaSession.ControllerInfo) {
+                    player?.stop()
+                }
+
+                @androidx.media3.common.util.UnstableApi
+                override fun onPlaybackResumption(
+                    mediaSession: MediaSession,
+                    controller: MediaSession.ControllerInfo
+                ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
+                    player?.play()
+
+                    val mediaItemsWithStartPosition = MediaSession.MediaItemsWithStartPosition(
+                        player?.currentMediaItem?.let { listOf(it) } ?: emptyList(),
+                        player?.currentMediaItemIndex ?: 0,
+                        player?.currentPosition ?: 0L
+                    )
+
+                    return Futures.immediateFuture(mediaItemsWithStartPosition)
+                }
+
+            })
             .build()
+
     }
 
     override fun onDestroy() {
@@ -114,7 +147,7 @@ class AudioPlayerService : MediaSessionService() {
 
         val style = MediaStyleNotificationHelper.MediaStyle(session)
 
-        return NotificationCompat.Builder(this, "media_playback_channel") // you can change this channel ID
+        return NotificationCompat.Builder(this, CHANNEL_ID) // you can change this channel ID
             .setContentTitle("Now Playing")
             .setContentText("Audio is playing")
             .setSmallIcon(R.drawable.ic_launcher_foreground) // make sure this icon exists
@@ -126,7 +159,7 @@ class AudioPlayerService : MediaSessionService() {
 
     private fun createNotificationChannel() {
         val channel = NotificationChannel(
-            "media_playback_channel", // must match .setChannelId
+            CHANNEL_ID, // must match .setChannelId
             "Media Playback",
             NotificationManager.IMPORTANCE_LOW
         ).apply {
