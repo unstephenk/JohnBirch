@@ -95,7 +95,7 @@ class AudioPlayerService : MediaSessionService() {
             player?.setMediaItem(mediaItem)
             player?.prepare()
 
-            PlayerHolder.player = player!!
+            PlayerHolder.player = player
 
             val resumePosition = download.lastPlayedAt ?: 0L
             player?.seekTo(resumePosition)

@@ -1,5 +1,4 @@
 package com.kuehlconsulting.johnbirchsociety.ui.rssfeed
-
 import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -27,20 +26,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kuehlconsulting.johnbirchsociety.model.RssItem
-
-/**
- * Full screen for the RSS feed. Displays loading/error state from [status]
- * and the combined list rows from [feedUi].
- */
-@Composable
-fun RssFeedScreen(
-    viewModel: RssFeedViewModel = viewModel(),
-    onNavigateToPlayer: (String) -> Unit
-) {
+@Composable fun RssFeedScreen( viewModel: RssFeedViewModel = viewModel(), onNavigateToPlayer: (String) -> Unit ) {
     val context = LocalContext.current
     val status by viewModel.status.collectAsStateWithLifecycleFix()
     val rows by viewModel.feedUi.collectAsStateWithLifecycleFix()
-
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         when (status) {
             is RssFeedUiState.Loading -> {
@@ -81,7 +70,9 @@ fun RssFeedScreen(
                 ) {
                     items(
                         items = rows,
-                        key = { it.item.enclosureUrl ?: it.item.title ?: it.hashCode() }
+                        key = {
+                            it.item.enclosureUrl ?: it.item.title ?: it.hashCode()
+                        }
                     ) { row ->
                         RssItemCard(
                             item = row.item.copy(
@@ -95,7 +86,6 @@ fun RssFeedScreen(
                                     .show()
                             },
                             onDownloadClick = { clicked ->
-                                // Optional: quick toast of the URL for debugging
                                 clicked.enclosureUrl?.let {
                                     Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
                                 }
@@ -119,27 +109,12 @@ fun RssFeedScreen(
             }
         }
     }
-}
 
-/**
- * A small helper so this file compiles whether or not you use lifecycle-runtime-compose.
- * If you already use lifecycle-runtime-compose, replace calls with collectAsStateWithLifecycle.
- */
-@Composable
-private fun <T> kotlinx.coroutines.flow.StateFlow<T>.collectAsStateWithLifecycleFix(): androidx.compose.runtime.State<T> {
-    // If you have lifecycle-runtime-compose, prefer:
-    // return this.collectAsStateWithLifecycle()
+}
+@Composable private fun kotlinx.coroutines.flow.StateFlow.collectAsStateWithLifecycleFix(): androidx.compose.runtime.State {
     return this.collectAsState()
 }
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-fun RssItemCard(
-    item: RssItem,
-    onLongPress: () -> Unit,
-    onDownloadClick: (RssItem) -> Unit,
-    onPlayClick: (RssItem) -> Unit
-) {
+@OptIn(ExperimentalFoundationApi::class) @Composable fun RssItemCard( item: RssItem, onLongPress: () -> Unit, onDownloadClick: (RssItem) -> Unit, onPlayClick: (RssItem) -> Unit ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -147,57 +122,55 @@ fun RssItemCard(
                 onLongClick = onLongPress,
                 onClick = { if (item.isDownloaded) onPlayClick(item) }
             ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 2.dp
+        ),
         shape = MaterialTheme.shapes.medium
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = item.title ?: "No Title",
-                style = MaterialTheme.typography.titleMedium
-            )
-            Text(
-                text = item.description ?: "",
+        Column(modifier = Modifier
+            .padding(16.dp)) {
+            Text( text = item.title ?: "No Title",
+                style = MaterialTheme.typography.titleMedium )
+            Text( text = item.description ?: "",
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)
+                modifier = Modifier.padding(
+                    top = 4.dp,
+                    bottom = 8.dp
+                )
             )
-
-            when { item.isDownloaded -> {
-                Button(onClick = { onPlayClick(item) }) { Text("Play") }
-            }
-
-                // show indeterminate when you emit -1f
-                item.downloadProgress < 0f -> {
-                    LinearProgressIndicator(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 4.dp)
-                    )
-                    Text("Downloading…", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 6.dp))
-                }
-
-                // show determinate ONLY when > 0 and < 1
-                item.downloadProgress > 0f && item.downloadProgress < 1f -> {
-                    LinearProgressIndicator(
-                        progress = item.downloadProgress.coerceIn(0f, 1f),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 4.dp)
-                    )
-                    Text("${(item.downloadProgress * 100).toInt()}%",
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(top = 6.dp))
-                }
-
-                // otherwise show Download button
-                else -> {
-                    Button(
-                        onClick = { onDownloadClick(item) },
-                        enabled = item.enclosureUrl != null
-                    ) { Text("Download") }
-                }
-            }
+    when {
+        item.isDownloaded -> {
+            Button(onClick = { onPlayClick(item) }) { Text("Resume") }
+        }
+        item.downloadProgress < 0f -> {
+            LinearProgressIndicator(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp)
+            )
+            Text("Downloading…", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 6.dp))
+        }
+        item.downloadProgress > 0f && item.downloadProgress < 1f -> {
+            LinearProgressIndicator(
+                progress = item.downloadProgress.coerceIn(0f, 1f),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp)
+            )
+            Text("${(item.downloadProgress * 100).toInt()}%",
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 6.dp))
+        }
+        else -> {
+            Button(
+                onClick = { onDownloadClick(item) },
+                enabled = item.enclosureUrl != null
+            ) { Text("Download") }
         }
     }
+}
+}
+
 }
