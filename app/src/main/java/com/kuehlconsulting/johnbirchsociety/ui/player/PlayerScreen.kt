@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.kuehlconsulting.johnbirchsociety.audio.AudioPlayerService
 import java.io.File
@@ -55,10 +56,17 @@ fun PlayerScreen(
                 .padding(inner),
             contentAlignment = Alignment.Center
         ) {
-            AndroidView(
-                factory = { PlayerView(it).apply { this.player = player } },
-                modifier = Modifier.fillMaxWidth()
-            )
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("Playing from service...", style = MaterialTheme.typography.titleMedium)
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Button(onClick = {
+                    // Send a broadcast or intent to pause/resume
+                }) {
+                    Text("Pause")
+                }
+            }
         }
     }
 }
