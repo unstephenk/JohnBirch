@@ -20,4 +20,6 @@ interface DownloadDao {
     @androidx.room.Query("UPDATE downloads SET lastPlayedAt = :position WHERE enclosureUrl = :enclosureUrl")
     suspend fun updateLastPlayedAt(enclosureUrl: String, position: Long)
 
+    @androidx.room.Query("SELECT * FROM downloads WHERE enclosureUrl = :enclosureUrl LIMIT 1")
+    suspend fun getByEnclosureUrl(enclosureUrl: String): Download?
 }

@@ -150,7 +150,17 @@ fun RssItemCard(
 
             when {
                 item.isDownloaded -> {
-                    Button(onClick = { onPlayClick(item) }) { Text("Resume") }
+                    val resumeTime = item.lastPlayedAt?.takeIf { it > 0 }?.let {
+                        val totalSeconds = it / 1000
+                        val minutes = totalSeconds / 60
+                        val seconds = totalSeconds % 60
+                        String.format("%d:%02d", minutes, seconds)
+                    }
+
+                    Button(onClick = { onPlayClick(item) }) {
+                        Text("Resume" + if (resumeTime != null) " at $resumeTime" else "")
+                    }
+
                 }
 
                 item.downloadProgress < 0f -> {

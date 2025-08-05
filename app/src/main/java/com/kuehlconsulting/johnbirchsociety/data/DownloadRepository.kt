@@ -3,7 +3,6 @@ package com.kuehlconsulting.johnbirchsociety.data
 import android.content.ContentUris
 import android.content.Context
 import android.provider.MediaStore
-import com.kuehlconsulting.johnbirchsociety.data.db.AppDatabase
 import com.kuehlconsulting.johnbirchsociety.data.db.Download
 import kotlinx.coroutines.flow.Flow
 
@@ -50,9 +49,5 @@ class DownloadRepository(private val context: Context) {
                 foundByName[name] = itemUri
             }
         }
-
-        // Optional: If your enclosureUrl always ends with the file name:
-        // match DB items by lastPathSegment; add missing ones as completed.
-        // (If not, skip this, DB remains the source of truth after first download.)
     }
 }

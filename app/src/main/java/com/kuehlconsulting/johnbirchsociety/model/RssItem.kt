@@ -8,4 +8,5 @@ data class RssItem(
     var isDownloaded: Boolean = false,
     var downloadProgress: Float = 0f,
     var declaredLength: Long? = null,
+    var lastPlayedAt: Long? = null
 )
