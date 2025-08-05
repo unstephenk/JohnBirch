@@ -1,17 +1,18 @@
 package com.kuehlconsulting.johnbirchsociety.ui.player
 
+import android.content.Intent
 import android.net.Uri
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.media3.common.MediaItem
-import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import androidx.compose.material3.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.ui.Alignment
+import androidx.core.content.ContextCompat
+import com.kuehlconsulting.johnbirchsociety.audio.AudioPlayerService
 import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -27,14 +28,14 @@ fun PlayerScreen(
         else Uri.fromFile(File(ref))
     }
 
-    val player = remember(uri) {
-        ExoPlayer.Builder(context).build().apply {
-            setMediaItem(MediaItem.fromUri(uri))
-            prepare()
-            playWhenReady = true
+    LaunchedEffect(uri) {
+        val intent = Intent(context, AudioPlayerService::class.java).apply {
+            action = AudioPlayerService.ACTION_PLAY
+            putExtra(AudioPlayerService.KEY_URI, uri.toString())
+            putExtra(AudioPlayerService.KEY_ENCLOSURE_URL, ref) // ref should be the enclosure URL
         }
+        ContextCompat.startForegroundService(context, intent)
     }
-    DisposableEffect(player) { onDispose { player.release() } }
 
     Scaffold(
         topBar = {
