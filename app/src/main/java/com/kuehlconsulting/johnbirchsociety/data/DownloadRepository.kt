@@ -8,7 +8,7 @@ import com.kuehlconsulting.johnbirchsociety.data.db.Download
 import kotlinx.coroutines.flow.Flow
 
 class DownloadRepository(private val context: Context) {
-    private val dao = AppDatabase.get(context).downloadDao()
+    private val dao = AppDatabase.getInstance(context).downloadDao()
 
     fun observeAll(): Flow<List<Download>> = dao.observeAll()
 
