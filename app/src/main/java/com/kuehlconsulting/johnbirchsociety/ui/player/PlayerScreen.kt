@@ -4,17 +4,20 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.media3.ui.PlayerView
 import androidx.compose.material3.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.kuehlconsulting.johnbirchsociety.audio.AudioPlayerService
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+
 import java.io.File
+import androidx.core.net.toUri
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -23,9 +26,9 @@ fun PlayerScreen(
     onClose: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val context = LocalContext.current
     val uri = remember(ref) {
-        if (ref.startsWith("content://")) Uri.parse(ref)
+        if (ref.startsWith("content://")) ref.toUri()
         else Uri.fromFile(File(ref))
     }
 
@@ -57,12 +60,18 @@ fun PlayerScreen(
             contentAlignment = Alignment.Center
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                val context = LocalContext.current
+
                 Text("Playing from service...", style = MaterialTheme.typography.titleMedium)
 
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Button(onClick = {
-                    // Send a broadcast or intent to pause/resume
+                    val pauseIntent = Intent(context, AudioPlayerService::class.java).apply {
+                        action = "com.kuehlconsulting.johnbirchsociety.ACTION_PAUSE"
+                    }
+                    ContextCompat.startForegroundService(context, pauseIntent)
+
                 }) {
                     Text("Pause")
                 }

@@ -30,6 +30,7 @@ import com.kuehlconsulting.johnbirchsociety.R
 class AudioPlayerService : MediaSessionService() {
     companion object {
         const val ACTION_PLAY = "com.kuehlconsulting.johnbirchsociety.PLAY"
+        const val ACTION_PAUSE = "com.kuehlconsulting.johnbirchsociety.ACTION_PAUSE"
         const val KEY_URI = "uri"
         const val KEY_ENCLOSURE_URL = "enclosureUrl"
     }
@@ -101,46 +102,32 @@ class AudioPlayerService : MediaSessionService() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
-        val uriString = intent?.getStringExtra(KEY_URI)
-        val enclosureUrl = intent?.getStringExtra(KEY_ENCLOSURE_URL)
-
-        if (uriString != null) {
-            val mediaItem = MediaItem.fromUri(Uri.parse(uriString))
-            player?.apply {
-                setMediaItem(mediaItem)
-                prepare()
-                play() // ✅ without this, audio won't start
+        when (intent?.action) {
+            ACTION_PAUSE -> {
+                player?.pause()
+                return START_STICKY
             }
+            else -> {
+                val uriString = intent?.getStringExtra(KEY_URI)
+                val enclosureUrl = intent?.getStringExtra(KEY_ENCLOSURE_URL)
 
-            // Build notification AFTER player is set up
-            val notification = buildNotification()
-            startForeground(NOTIFICATION_ID, notification)
-        }
+                if (uriString != null) {
+                    val mediaItem = MediaItem.fromUri(Uri.parse(uriString))
+                    player?.apply {
+                        setMediaItem(mediaItem)
+                        prepare()
+                        play()
+                    }
 
-        return START_STICKY
-    }
+                    val notification = buildNotification()
+                    startForeground(NOTIFICATION_ID, notification)
+                }
 
-
-
-
-
-    private fun playMedia(enclosureUrl: String, contentUri: Uri) {
-        val dao = getDownloadDao(this)
-
-        CoroutineScope(Dispatchers.IO).launch {
-            val download = dao.getByEnclosureUrl(enclosureUrl) ?: return@launch
-
-            val mediaItem = MediaItem.fromUri(contentUri)
-            player?.setMediaItem(mediaItem)
-            player?.prepare()
-
-            PlayerHolder.player = player!!
-            player?.seekTo(download.lastPlayedAt ?: 0L)
-            player?.play()
-
-            player?.addListener(PlayerProgressListener(enclosureUrl, dao))
+                return START_STICKY
+            }
         }
     }
+
 
     override fun onBind(intent: Intent?): IBinder? {
         return super.onBind(intent)
