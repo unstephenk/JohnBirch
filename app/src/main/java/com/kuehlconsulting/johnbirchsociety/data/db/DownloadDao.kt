@@ -16,4 +16,8 @@ interface DownloadDao {
 
     @Query("DELETE FROM downloads WHERE enclosureUrl = :url")
     suspend fun delete(url: String)
+
+    @androidx.room.Query("UPDATE downloads SET lastPlayedAt = :position WHERE enclosureUrl = :enclosureUrl")
+    suspend fun updateLastPlayedAt(enclosureUrl: String, position: Long)
+
 }
