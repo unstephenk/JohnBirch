@@ -1,5 +1,6 @@
 package com.kuehlconsulting.johnbirchsociety.audio
 
+import android.app.NotificationChannel
 import android.app.Service import android.content.Intent import android.os.IBinder import android.app.NotificationManager import android.app.PendingIntent import android.content.Context import android.graphics.Bitmap import androidx.core.app.NotificationCompat import androidx.media3.common.MediaItem import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer import androidx.media3.session.MediaSession import androidx.media3.ui.PlayerNotificationManager
@@ -20,6 +21,15 @@ class AudioPlayerService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+
+        val channel = NotificationChannel(
+            NOTIFICATION_CHANNEL_ID,
+            "John Birch Audio",
+            NotificationManager.IMPORTANCE_LOW
+        )
+        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        manager.createNotificationChannel(channel)
+
 
         player = ExoPlayer.Builder(this).build()
         mediaSession = MediaSession.Builder(this, player!!).build()
@@ -52,6 +62,7 @@ class AudioPlayerService : Service() {
             player?.play()
         }
 
+        notificationManager?.setPlayer(player)
         return START_STICKY
     }
 
