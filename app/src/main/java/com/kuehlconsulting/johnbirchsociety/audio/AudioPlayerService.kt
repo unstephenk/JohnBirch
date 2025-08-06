@@ -14,7 +14,6 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaStyleNotificationHelper
-import com.kuehlconsulting.johnbirchsociety.R
 import androidx.core.content.edit
 
 class AudioPlayerService : Service() {
@@ -72,7 +71,7 @@ class AudioPlayerService : Service() {
 
         // Handle user actions
         when (intent?.action) {
-            ACTION_PAUSE -> player?.pause()
+            ACTION_PAUSE -> { player?.pause(); return START_STICKY }
             ACTION_PLAY -> player?.play()
             ACTION_REWIND -> player?.seekBack()
             ACTION_FORWARD -> player?.seekForward()
@@ -134,8 +133,13 @@ class AudioPlayerService : Service() {
             PendingIntent.FLAG_IMMUTABLE
         )
 
+        val pauseIntent = PendingIntent.getService(
+            this, 1, Intent(this, AudioPlayerService::class.java).apply { action = ACTION_PAUSE },
+            PendingIntent.FLAG_IMMUTABLE
+        )
+
         val forwardIntent = PendingIntent.getService(
-            this, 1, Intent(this, AudioPlayerService::class.java).apply { action = ACTION_FORWARD },
+            this, 2, Intent(this, AudioPlayerService::class.java).apply { action = ACTION_FORWARD },
             PendingIntent.FLAG_IMMUTABLE
         )
 
@@ -144,15 +148,15 @@ class AudioPlayerService : Service() {
             .setContentText("Playing audio")
             .setSmallIcon(android.R.drawable.ic_media_play)
             .addAction(android.R.drawable.ic_media_previous, "Rewind", rewindIntent)
+            .addAction(android.R.drawable.ic_media_pause, "Pause", pauseIntent)
             .addAction(android.R.drawable.ic_media_next, "Forward", forwardIntent)
             .setStyle(
                 MediaStyleNotificationHelper.MediaStyle(session)
-                    .setShowActionsInCompactView(0, 1) // Show both actions in compact view
+                    .setShowActionsInCompactView(0, 1, 2)
             )
             .setOngoing(true)
             .build()
     }
-
 
 
 }
