@@ -1,9 +1,21 @@
 package com.kuehlconsulting.johnbirchsociety.audio
 
 import android.app.NotificationChannel
-import android.app.Service import android.content.Intent import android.os.IBinder import android.app.NotificationManager import android.app.PendingIntent import android.content.Context import android.graphics.Bitmap import androidx.core.app.NotificationCompat import androidx.media3.common.MediaItem import androidx.media3.common.Player
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.app.Service
+import android.content.Context
+import android.content.Intent
+import android.graphics.Bitmap
+import android.os.IBinder
+import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.exoplayer.ExoPlayer import androidx.media3.session.MediaSession import androidx.media3.ui.PlayerNotificationManager
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.session.MediaSession
+import androidx.media3.ui.PlayerNotificationManager
 
 @UnstableApi
 class AudioPlayerService : Service() {
@@ -22,6 +34,7 @@ class AudioPlayerService : Service() {
     override fun onCreate() {
         super.onCreate()
 
+        // Create notification channel for Android 8+
         val channel = NotificationChannel(
             NOTIFICATION_CHANNEL_ID,
             "John Birch Audio",
@@ -29,7 +42,6 @@ class AudioPlayerService : Service() {
         )
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.createNotificationChannel(channel)
-
 
         player = ExoPlayer.Builder(this).build()
         mediaSession = MediaSession.Builder(this, player!!).build()
@@ -63,6 +75,17 @@ class AudioPlayerService : Service() {
         }
 
         notificationManager?.setPlayer(player)
+
+        // Start foreground with a stub notification until media takes over
+        val notification = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+            .setContentTitle("Starting playback")
+            .setContentText("Buffering...")
+            .setSmallIcon(android.R.drawable.ic_media_play)
+            .setOngoing(true)
+            .build()
+
+        startForeground(NOTIFICATION_ID, notification)
+
         return START_STICKY
     }
 
@@ -93,5 +116,3 @@ class AudioPlayerService : Service() {
     }
 
 }
-
-
