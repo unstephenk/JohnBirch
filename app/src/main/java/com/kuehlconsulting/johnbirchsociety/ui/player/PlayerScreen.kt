@@ -18,7 +18,9 @@ import androidx.compose.material3.IconButton
 
 import java.io.File
 import androidx.core.net.toUri
+import androidx.media3.common.util.UnstableApi
 
+@androidx.annotation.OptIn(UnstableApi::class)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlayerScreen(
@@ -34,7 +36,6 @@ fun PlayerScreen(
 
     LaunchedEffect(uri) {
         val intent = Intent(context, AudioPlayerService::class.java).apply {
-            action = AudioPlayerService.ACTION_PLAY
             putExtra(AudioPlayerService.KEY_URI, uri.toString())
             putExtra(AudioPlayerService.KEY_ENCLOSURE_URL, ref) // ref should be the enclosure URL
         }
