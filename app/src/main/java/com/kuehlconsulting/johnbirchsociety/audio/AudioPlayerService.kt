@@ -9,7 +9,6 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
-import androidx.core.content.ContextCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
@@ -43,7 +42,11 @@ class AudioPlayerService : Service() {
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.createNotificationChannel(channel)
 
-        player = ExoPlayer.Builder(this).build()
+        player = ExoPlayer.Builder(this)
+            .setSeekBackIncrementMs(15000)
+            .setSeekForwardIncrementMs(15000)
+            .build()
+
         mediaSession = MediaSession.Builder(this, player!!).build()
 
         notificationManager = PlayerNotificationManager.Builder(
@@ -60,8 +63,15 @@ class AudioPlayerService : Service() {
                 setUseNextAction(false)
                 setUsePreviousAction(false)
                 setUsePlayPauseActions(true)
-                setPlayer(player)
             }
+
+        player?.addListener(object : Player.Listener {
+            override fun onPlaybackStateChanged(state: Int) {
+                if (state == Player.STATE_READY) {
+                    notificationManager?.setPlayer(player)
+                }
+            }
+        })
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -74,9 +84,7 @@ class AudioPlayerService : Service() {
             player?.play()
         }
 
-        notificationManager?.setPlayer(player)
-
-        // Start foreground with a stub notification until media takes over
+        // Temporary foreground notification to prevent service kill
         val notification = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
             .setContentTitle("Starting playback")
             .setContentText("Buffering...")
