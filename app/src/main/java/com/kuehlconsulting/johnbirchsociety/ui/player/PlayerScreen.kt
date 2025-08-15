@@ -1,95 +1,79 @@
-// app/src/main/java/.../ui/player/PlayerScreen.kt
+// app/src/main/java/com/kuehlconsulting/johnbirchsociety/ui/player/PlayerScreen.kt
 package com.kuehlconsulting.johnbirchsociety.ui.player
 
 import android.content.ComponentName
 import android.net.Uri
+import androidx.annotation.OptIn
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import androidx.media3.ui.PlayerControlView
 import com.kuehlconsulting.johnbirchsociety.audio.AudioPlayerService
-import kotlinx.coroutines.guava.await
 import java.io.File
+import java.util.concurrent.Executor
+import androidx.core.net.toUri
 
-// --------------- Public API you can call from MainActivity ---------------
-
+@OptIn(UnstableApi::class)
 @Composable
 fun PlayerScreen(
-    ref: YourRefType,              // <-- keep your existing call site
-    onClose: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val mediaUri = remember(ref) { resolveMediaUri(ref) }
-    val metadata  = remember(ref) { resolveMetadata(ref) }
-    PlayerScreenInternal(mediaUri = mediaUri, metadata = metadata, onClose = onClose, modifier = modifier)
-}
-
-// --------------- Adapter helpers (adjust to your model) ---------------
-
-/**
- * Map your 'ref' to a playable local Uri.
- * Examples shown for either a file path or a content Uri on your model.
- */
-private fun resolveMediaUri(ref: YourRefType): Uri {
-    // Example possibilities — replace with your actual fields:
-    // return ref.contentUri                       // if already a Uri
-    // return Uri.parse(ref.localUriString)        // if stored as string
-    // return Uri.fromFile(File(ref.localPath))    // if stored as file path
-
-    // TEMP default (replace this with your real mapping):
-    val path = ref.localPath                       // <-- e.g., "/storage/emulated/0/Podcasts/episode123.mp3"
-    require(!path.isNullOrBlank()) { "Ref has no local path/uri" }
-    return Uri.fromFile(File(path))
-}
-
-/**
- * Optional: enrich the notification/lockscreen UI.
- */
-private fun resolveMetadata(ref: YourRefType): MediaMetadata {
-    return MediaMetadata.Builder()
-        .setTitle(ref.title ?: "Episode")
-        .setArtist(ref.showName ?: "Podcast")
-        .setArtworkUri(ref.artworkUri) // if you have one; can be null
-        .build()
-}
-
-// --------------- Internal player UI (don’t change) ---------------
-
-@Composable
-private fun PlayerScreenInternal(
-    mediaUri: Uri,
-    metadata: MediaMetadata? = null,
+    ref: String,                 // local file path or a content:// / file:// / http(s):// string
     onClose: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val token = remember {
-        SessionToken(context, ComponentName(context, AudioPlayerService::class.java))
+    val mainExecutor: Executor = remember { ContextCompat.getMainExecutor(context) }
+    val token = remember { SessionToken(context, ComponentName(context, AudioPlayerService::class.java)) }
+
+    // Hold both the controller and the future reference to release/cancel safely.
+    var controller by remember { mutableStateOf<MediaController?>(null) }
+    var future by remember { mutableStateOf<com.google.common.util.concurrent.ListenableFuture<MediaController>?>(null) }
+
+    // Build controller once per token/ref combo
+    LaunchedEffect(token, ref) {
+        // Build async; we won't use Guava extensions.
+        val f = MediaController.Builder(context, token).buildAsync()
+        future = f
+        f.addListener(
+            {
+                try {
+                    val c = f.get() // get() runs on mainExecutor because we scheduled on it
+                    controller = c
+
+                    val uri = toPlayableUri(ref)
+                    val item = MediaItem.Builder()
+                        .setUri(uri)
+                        .setMediaMetadata(
+                            MediaMetadata.Builder()
+                                .setTitle(uri.lastPathSegment ?: "Episode")
+                                .build()
+                        ).build()
+
+                    c.setMediaItem(item)
+                    c.prepare()
+                    c.play()
+                } catch (_: Exception) {
+                    // Swallow for now; you can log if you like
+                }
+            },
+            mainExecutor
+        )
     }
 
-    var controller by remember { mutableStateOf<MediaController?>(null) }
-
-    LaunchedEffect(token, mediaUri) {
-        val future = MediaController.Builder(context, token).buildAsync()
-        controller = future.await()
-
-        controller?.apply {
-            val item = MediaItem.Builder()
-                .setUri(mediaUri)
-                .setMediaMetadata(metadata ?: MediaMetadata.EMPTY)
-                .build()
-
-            setMediaItem(item)
-            prepare()
-            play()
+    // Ensure we release even without awaitDispose
+    DisposableEffect(token) {
+        onDispose {
+            try { controller?.release() } catch (_: Exception) {}
+            try { future?.let { MediaController.releaseFuture(it) } } catch (_: Exception) {}
+            controller = null
+            future = null
         }
-
-        awaitDispose { MediaController.releaseFuture(future) }
     }
 
     AndroidView(
@@ -104,4 +88,12 @@ private fun PlayerScreenInternal(
         },
         update = { view -> view.player = controller }
     )
+}
+
+private fun toPlayableUri(ref: String): Uri {
+    return when {
+        ref.startsWith("content://") || ref.startsWith("file://") || ref.startsWith("http://") || ref.startsWith("https://") ->
+            ref.toUri()
+        else -> Uri.fromFile(File(ref))
+    }
 }

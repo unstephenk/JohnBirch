@@ -31,7 +31,10 @@ import android.os.Build
 
 class MainActivity : ComponentActivity() {
 
-    private val requestNotifications = registerForActivityResult(RequestPermission()) { /* no-op */ }
+    private val requestNotifications = registerForActivityResult(
+        RequestPermission()
+    ) { /* no-op */ }
+
 
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -43,6 +46,7 @@ class MainActivity : ComponentActivity() {
             ) == PackageManager.PERMISSION_GRANTED
             if (!granted) requestNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
+
 
         setContent {
             var nowPlayingRef by rememberSaveable { mutableStateOf<String?>(null) }

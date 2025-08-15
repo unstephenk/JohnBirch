@@ -20,39 +20,37 @@ class AudioPlayerService : MediaSessionService() {
     override fun onCreate() {
         super.onCreate()
 
-        // Single app-wide player living in the service
-        val p = ExoPlayer.Builder(this).build().apply {
+        val p = ExoPlayer.Builder(this)
+            .setSeekBackIncrementMs(15_000L)     // 15 seconds
+            .setSeekForwardIncrementMs(15_000L)  // 15 seconds
+            .build().apply {
             setAudioAttributes(
                 AudioAttributes.Builder()
                     .setUsage(C.USAGE_MEDIA)
-                    .setContentType(C.AUDIO_CONTENT_TYPE_SPEECH) // podcasts
+                    .setContentType(C.AUDIO_CONTENT_TYPE_SPEECH)
                     .build(),
                 /* handleAudioFocus = */ true
             )
-            setHandleAudioBecomingNoisy(true) // pause if headphones unplugged
+            setHandleAudioBecomingNoisy(true)
         }
         player = p
 
-        // MediaSession wires up BT/lockscreen/car/system controls + transport
         session = MediaSession.Builder(this, p).build()
 
-        // This enables the system’s media notification (slide drawer/lock screen)
-        // and promotes the service to foreground correctly.
+        // This shows the system media notification + promotes service to foreground.
         setMediaNotificationProvider(DefaultMediaNotificationProvider(this))
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
-        // Optional convenience: start playback if a URL was included
-        val url = intent?.getStringExtra("url")
-        if (!url.isNullOrBlank()) {
+        // Optional convenience: if caller passes a URL/URI string
+        intent?.getStringExtra("url")?.let { url ->
             player?.apply {
                 setMediaItem(MediaItem.fromUri(url))
                 prepare()
                 play()
             }
         }
-        // If the system recreates the service, we want it to keep running.
         return START_STICKY
     }
 
