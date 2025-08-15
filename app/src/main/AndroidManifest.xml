@@ -12,6 +12,7 @@
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" /> <!-- Needed for Bluetooth setup -->
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" /> <!-- For connecting to Bluetooth devices (API 31+) -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
 
 
@@ -39,8 +40,11 @@
 
         <service
             android:name=".audio.AudioPlayerService"
-            android:exported="false"
             android:foregroundServiceType="mediaPlayback"
-            android:enabled="true"/>
+            android:exported="true">
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaSessionService"/>
+            </intent-filter>
+        </service>
     </application>
 </manifest>

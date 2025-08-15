@@ -19,12 +19,10 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.ui.Modifier
 import com.kuehlconsulting.johnbirchsociety.ui.theme.JohnBirchSocietyTheme
 import com.kuehlconsulting.johnbirchsociety.ui.rssfeed.RssFeedScreen
-import android.net.Uri
 import android.widget.Toast
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import com.kuehlconsulting.johnbirchsociety.ui.player.PlayerScreen
-import java.io.File
 
 class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
