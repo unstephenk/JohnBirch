@@ -23,12 +23,27 @@ import android.widget.Toast
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import com.kuehlconsulting.johnbirchsociety.ui.player.PlayerScreen
+import androidx.activity.result.contract.ActivityResultContracts.RequestPermission
+import androidx.core.content.ContextCompat
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 
 class MainActivity : ComponentActivity() {
+
+    private val requestNotifications = registerForActivityResult(RequestPermission()) { /* no-op */ }
+
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+
+        if (Build.VERSION.SDK_INT >= 33) {
+            val granted = ContextCompat.checkSelfPermission(
+                this, Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+            if (!granted) requestNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+
         setContent {
             var nowPlayingRef by rememberSaveable { mutableStateOf<String?>(null) }
 

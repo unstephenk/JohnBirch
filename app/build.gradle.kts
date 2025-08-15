@@ -4,7 +4,8 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    id("com.google.devtools.ksp") version "2.2.0-2.0.2" // Keep explicit KSP version if needed, or alias it
+    id("com.google.devtools.ksp") version "2.2.10-2.0.2" // Keep explicit KSP version if needed, or alias it
+
 }
 
 // Move kotlin block outside of android block
@@ -47,6 +48,10 @@ android {
 }
 
 dependencies {
+
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-guava:1.10.2")
+
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
