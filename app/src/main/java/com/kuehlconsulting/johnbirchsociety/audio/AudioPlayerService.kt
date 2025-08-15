@@ -1,5 +1,7 @@
 package com.kuehlconsulting.johnbirchsociety.audio
 
+import android.content.Intent
+import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
@@ -17,14 +19,30 @@ class AudioPlayerService : MediaSessionService() {
     override fun onCreate() {
         super.onCreate()
 
-
         player = ExoPlayer.Builder(this)
             .setSeekBackIncrementMs(15000)
             .setSeekForwardIncrementMs(15000)
             .build()
 
-        mediaSession = MediaSession.Builder(this, player!!).build()
+        mediaSession = MediaSession.Builder(this, player!!)
+            .build()
+    }
 
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        super.onStartCommand(intent, flags, startId)
+        val uri = intent?.getStringExtra(KEY_URI)
+        uri?.let {
+            val mediaItem = MediaItem.fromUri(it)
+            player?.setMediaItem(mediaItem)
+            player?.prepare()
+            player?.play()
+        }
+
+        return START_STICKY
+    }
+
+    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? {
+        return mediaSession
     }
 
     override fun onDestroy() {
@@ -32,11 +50,4 @@ class AudioPlayerService : MediaSessionService() {
         mediaSession?.release()
         super.onDestroy()
     }
-
-    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? {
-        // Here you can implement logic to decide whether to accept or reject controller connections.
-        // For simplicity, let's accept all connections.
-        return mediaSession
-    }
-
 }
