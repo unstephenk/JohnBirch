@@ -21,3 +21,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "John Birch Society"
 include(":app")
+// test
