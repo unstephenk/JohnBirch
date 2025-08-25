@@ -67,7 +67,12 @@ fun PlayerScreen(
     // Register broadcast receiver
     LaunchedEffect(Unit) {
         val filter = IntentFilter(AudioPlayerService.ACTION_PROGRESS_UPDATE)
-        context.registerReceiver(progressReceiver, filter)
+        ContextCompat.registerReceiver(
+            context,
+            progressReceiver,
+            filter,
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
     }
 
     // Cleanup on dispose
