@@ -4,10 +4,8 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
-import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.graphics.Bitmap
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
@@ -20,6 +18,7 @@ import androidx.media3.session.MediaSession
 import androidx.media3.ui.PlayerNotificationManager
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 
 @UnstableApi
 class AudioPlayerService : Service() {
@@ -31,10 +30,10 @@ class AudioPlayerService : Service() {
         const val KEY_ENCLOSURE_URL = "KEY_ENCLOSURE_URL"
         const val ACTION_PAUSE = "com.kuehlconsulting.johnbirchsociety.ACTION_PAUSE"
         const val ACTION_PLAY = "com.kuehlconsulting.johnbirchsociety.ACTION_PLAY"
-        const val ACTION_PROGRESS_UPDATE = "com.kuehlconsulting.johnbirchsociety.ACTION_PROGRESS_UPDATE"
-        const val EXTRA_CURRENT_POSITION = "EXTRA_CURRENT_POSITION"
-        const val EXTRA_DURATION = "EXTRA_DURATION"
-        const val EXTRA_IS_PLAYING = "EXTRA_IS_PLAYING"
+        private const val TAG = "AudioPlayerService"
+        
+        // Callback for progress updates
+        var progressCallback: ((Long, Long, Boolean) -> Unit)? = null
     }
 
     private var player: ExoPlayer? = null
@@ -50,12 +49,10 @@ class AudioPlayerService : Service() {
                     val currentPosition = exoPlayer.currentPosition
                     val duration = exoPlayer.duration
                     
-                    val intent = Intent(ACTION_PROGRESS_UPDATE).apply {
-                        putExtra(EXTRA_CURRENT_POSITION, currentPosition)
-                        putExtra(EXTRA_DURATION, duration)
-                        putExtra(EXTRA_IS_PLAYING, exoPlayer.isPlaying)
-                    }
-                    sendBroadcast(intent)
+                    Log.d(TAG, "Progress update: position=$currentPosition, duration=$duration, isPlaying=${exoPlayer.isPlaying}")
+                    
+                    // Use callback instead of broadcast
+                    progressCallback?.invoke(currentPosition, duration, exoPlayer.isPlaying)
                 }
             }
             progressHandler.postDelayed(this, 1000) // Update every second
@@ -77,9 +74,12 @@ class AudioPlayerService : Service() {
         player = ExoPlayer.Builder(this).build().apply {
             addListener(object : Player.Listener {
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
+                    Log.d(TAG, "onIsPlayingChanged: isPlaying=$isPlaying")
                     if (isPlaying && !isTrackingProgress) {
+                        Log.d(TAG, "Starting progress tracking")
                         startProgressTracking()
                     } else if (!isPlaying && isTrackingProgress) {
+                        Log.d(TAG, "Stopping progress tracking")
                         stopProgressTracking()
                     }
                 }
@@ -142,14 +142,18 @@ class AudioPlayerService : Service() {
 
     private fun startProgressTracking() {
         if (!isTrackingProgress) {
+            Log.d(TAG, "startProgressTracking called")
             isTrackingProgress = true
             progressHandler.post(progressRunnable)
         }
     }
 
     private fun stopProgressTracking() {
-        isTrackingProgress = false
-        progressHandler.removeCallbacks(progressRunnable)
+        if (isTrackingProgress) {
+            Log.d(TAG, "stopProgressTracking called")
+            isTrackingProgress = false
+            progressHandler.removeCallbacks(progressRunnable)
+        }
     }
 
     override fun onDestroy() {

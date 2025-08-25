@@ -1,9 +1,7 @@
 package com.kuehlconsulting.johnbirchsociety.ui.player
 
-import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.net.Uri
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -27,6 +25,9 @@ import androidx.compose.ui.text.style.TextAlign
 import java.io.File
 import androidx.core.net.toUri
 import androidx.media3.common.util.UnstableApi
+import android.util.Log
+
+private const val TAG = "PlayerScreen"
 
 @androidx.annotation.OptIn(UnstableApi::class)
 @OptIn(ExperimentalMaterial3Api::class)
@@ -48,41 +49,25 @@ fun PlayerScreen(
     var isPlaying by remember { mutableStateOf(false) }
     var hasStartedPlaying by remember { mutableStateOf(false) }
 
-    // Broadcast receiver for progress updates
-    val progressReceiver = remember {
-        object : BroadcastReceiver() {
-            override fun onReceive(context: Context?, intent: Intent?) {
-                if (intent?.action == AudioPlayerService.ACTION_PROGRESS_UPDATE) {
-                    currentPosition = intent.getLongExtra(AudioPlayerService.EXTRA_CURRENT_POSITION, 0L)
-                    duration = intent.getLongExtra(AudioPlayerService.EXTRA_DURATION, 0L)
-                    isPlaying = intent.getBooleanExtra(AudioPlayerService.EXTRA_IS_PLAYING, false)
-                    if (isPlaying && !hasStartedPlaying) {
-                        hasStartedPlaying = true
-                    }
-                }
+    // Set up progress callback
+    LaunchedEffect(Unit) {
+        AudioPlayerService.progressCallback = { position, totalDuration, playing ->
+            Log.d(TAG, "Progress callback: position=$position, duration=$totalDuration, isPlaying=$playing")
+            currentPosition = position
+            duration = totalDuration
+            isPlaying = playing
+            if (playing && !hasStartedPlaying) {
+                hasStartedPlaying = true
             }
         }
-    }
-
-    // Register broadcast receiver
-    LaunchedEffect(Unit) {
-        val filter = IntentFilter(AudioPlayerService.ACTION_PROGRESS_UPDATE)
-        ContextCompat.registerReceiver(
-            context,
-            progressReceiver,
-            filter,
-            ContextCompat.RECEIVER_NOT_EXPORTED
-        )
+        Log.d(TAG, "Progress callback registered")
     }
 
     // Cleanup on dispose
     DisposableEffect(Unit) {
         onDispose {
-            try {
-                context.unregisterReceiver(progressReceiver)
-            } catch (e: Exception) {
-                // Receiver might not be registered
-            }
+            AudioPlayerService.progressCallback = null
+            Log.d(TAG, "Progress callback unregistered")
         }
     }
 
@@ -122,10 +107,20 @@ fun PlayerScreen(
                     textAlign = TextAlign.Center
                 )
 
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-                // Progress bar - only show after playback has started
-                if (hasStartedPlaying && duration > 0) {
+                // Debug information
+                Text(
+                    text = "Debug: hasStartedPlaying=$hasStartedPlaying, duration=$duration, currentPosition=$currentPosition, isPlaying=$isPlaying",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Progress bar - show when hasStartedPlaying is true (removed duration > 0 condition for debugging)
+                if (hasStartedPlaying) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier.fillMaxWidth()
@@ -147,6 +142,19 @@ fun PlayerScreen(
                     }
                     
                     Spacer(modifier = Modifier.height(24.dp))
+                }
+
+                // Test button to simulate progress (for debugging)
+                Button(
+                    onClick = {
+                        hasStartedPlaying = true
+                        currentPosition = 30000L // 30 seconds
+                        duration = 300000L // 5 minutes
+                        isPlaying = true
+                    },
+                    modifier = Modifier.padding(8.dp)
+                ) {
+                    Text("Test Progress Bar")
                 }
 
                 // Play/Pause button
