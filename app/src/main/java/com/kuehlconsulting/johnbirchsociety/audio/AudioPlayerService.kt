@@ -4,8 +4,10 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.Bitmap
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
@@ -16,6 +18,8 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
 import androidx.media3.ui.PlayerNotificationManager
+import android.os.Handler
+import android.os.Looper
 
 @UnstableApi
 class AudioPlayerService : Service() {
@@ -25,11 +29,38 @@ class AudioPlayerService : Service() {
         const val NOTIFICATION_CHANNEL_ID = "johnbirch_audio"
         const val KEY_URI = "KEY_URI"
         const val KEY_ENCLOSURE_URL = "KEY_ENCLOSURE_URL"
+        const val ACTION_PAUSE = "com.kuehlconsulting.johnbirchsociety.ACTION_PAUSE"
+        const val ACTION_PLAY = "com.kuehlconsulting.johnbirchsociety.ACTION_PLAY"
+        const val ACTION_PROGRESS_UPDATE = "com.kuehlconsulting.johnbirchsociety.ACTION_PROGRESS_UPDATE"
+        const val EXTRA_CURRENT_POSITION = "EXTRA_CURRENT_POSITION"
+        const val EXTRA_DURATION = "EXTRA_DURATION"
+        const val EXTRA_IS_PLAYING = "EXTRA_IS_PLAYING"
     }
 
     private var player: ExoPlayer? = null
     private var mediaSession: MediaSession? = null
     private var notificationManager: PlayerNotificationManager? = null
+    private val progressHandler = Handler(Looper.getMainLooper())
+    private var isTrackingProgress = false
+
+    private val progressRunnable = object : Runnable {
+        override fun run() {
+            player?.let { exoPlayer ->
+                if (exoPlayer.isPlaying) {
+                    val currentPosition = exoPlayer.currentPosition
+                    val duration = exoPlayer.duration
+                    
+                    val intent = Intent(ACTION_PROGRESS_UPDATE).apply {
+                        putExtra(EXTRA_CURRENT_POSITION, currentPosition)
+                        putExtra(EXTRA_DURATION, duration)
+                        putExtra(EXTRA_IS_PLAYING, exoPlayer.isPlaying)
+                    }
+                    sendBroadcast(intent)
+                }
+            }
+            progressHandler.postDelayed(this, 1000) // Update every second
+        }
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -43,7 +74,17 @@ class AudioPlayerService : Service() {
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.createNotificationChannel(channel)
 
-        player = ExoPlayer.Builder(this).build()
+        player = ExoPlayer.Builder(this).build().apply {
+            addListener(object : Player.Listener {
+                override fun onIsPlayingChanged(isPlaying: Boolean) {
+                    if (isPlaying && !isTrackingProgress) {
+                        startProgressTracking()
+                    } else if (!isPlaying && isTrackingProgress) {
+                        stopProgressTracking()
+                    }
+                }
+            })
+        }
         mediaSession = MediaSession.Builder(this, player!!).build()
 
         notificationManager = PlayerNotificationManager.Builder(
@@ -65,13 +106,23 @@ class AudioPlayerService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val uriString = intent?.getStringExtra(KEY_URI)
+        when (intent?.action) {
+            ACTION_PAUSE -> {
+                player?.pause()
+            }
+            ACTION_PLAY -> {
+                player?.play()
+            }
+            else -> {
+                val uriString = intent?.getStringExtra(KEY_URI)
 
-        if (!uriString.isNullOrEmpty()) {
-            val mediaItem = MediaItem.fromUri(uriString)
-            player?.setMediaItem(mediaItem)
-            player?.prepare()
-            player?.play()
+                if (!uriString.isNullOrEmpty()) {
+                    val mediaItem = MediaItem.fromUri(uriString)
+                    player?.setMediaItem(mediaItem)
+                    player?.prepare()
+                    player?.play()
+                }
+            }
         }
 
         notificationManager?.setPlayer(player)
@@ -89,8 +140,21 @@ class AudioPlayerService : Service() {
         return START_STICKY
     }
 
+    private fun startProgressTracking() {
+        if (!isTrackingProgress) {
+            isTrackingProgress = true
+            progressHandler.post(progressRunnable)
+        }
+    }
+
+    private fun stopProgressTracking() {
+        isTrackingProgress = false
+        progressHandler.removeCallbacks(progressRunnable)
+    }
+
     override fun onDestroy() {
         super.onDestroy()
+        stopProgressTracking()
         notificationManager?.setPlayer(null)
         mediaSession?.release()
         player?.release()
